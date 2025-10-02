@@ -39,7 +39,7 @@ jobs:
           for file in $(find . -name "*.drawio" -type f); do
             output="${file%.drawio}.png"
             echo "Converting $file to $output"
-            xvfb-run -a drawio --export --format png --output "$output" "$file"
+            xvfb-run -a drawio --no-sandbox --export --format png --output "$output" "$file"
           done
 
       - name: Verify generated images
