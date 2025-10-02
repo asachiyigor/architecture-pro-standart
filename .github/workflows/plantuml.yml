@@ -1,0 +1,76 @@
+name: Generate PlantUML Diagrams
+
+on:
+  push:
+    branches:
+      - tasks
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Graphviz and fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz fonts-dejavu fonts-liberation fonts-noto
+
+      - name: Download PlantUML
+        run: |
+          wget https://github.com/plantuml/plantuml/releases/download/v1.2024.8/plantuml-1.2024.8.jar -O plantuml.jar
+
+      - name: Generate PlantUML diagrams
+        run: |
+          echo "Searching for .puml files..."
+          find . -name "*.puml" -type f
+          if [ -n "$(find . -name '*.puml' -type f)" ]; then
+            echo "Generating PNG diagrams..."
+            find . -name "*.puml" -type f -exec java -jar plantuml.jar -charset UTF-8 -tpng {} \;
+            echo "Generated PNG files:"
+            find . -name "*.png" -type f
+          else
+            echo "No .puml files found"
+            exit 0
+          fi
+
+      - name: Verify generated images
+        run: |
+          echo "Generated PNG files:"
+          find . -name "*.png" -type f
+          echo "PNG generation completed successfully"
+
+      - name: Commit generated images
+        run: |
+          git config --local user.email "asachiyigor@gmail.com"
+          git config --local user.name "Igor"
+          git add "**/*.png" || true
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            git commit -m "chore: Auto-generate PlantUML diagrams"
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Push changes
+        if: success()
+        run: |
+          git push || echo "Nothing to push"

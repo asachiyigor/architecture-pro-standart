@@ -1,0 +1,43 @@
+@startuml Credit Online - Context Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Диаграмма контекста: Онлайн заявки на кредит
+
+Person(new_client, "Новый клиент", "Потенциальный заемщик банка")
+Person(existing_client, "Существующий клиент", "Действующий клиент банка с историей")
+Person(branch_manager, "Менеджер отделения", "Обрабатывает заявки в отделении")
+Person(credit_manager, "Менеджер кредитного бэк-офиса", "Обрабатывает заявки в кредитном конвейере")
+
+System(credit_online, "Система онлайн кредитования", "Обработка кредитных заявок через интернет, предоставление предварительных решений и предодобренных предложений")
+
+System_Ext(website, "Сайт банка", "PHP + React.js, публичный сайт для новых клиентов")
+System_Ext(internet_bank, "Интернет-банк", "ASP.NET MVC 4.5 + React.js, личный кабинет клиентов")
+System_Ext(scoring_system, "Система кредитного скоринга", "Расчет скоринговых баллов и кредитных лимитов")
+System_Ext(bki, "БКИ (Бюро кредитных историй)", "Внешний провайдер кредитных историй")
+System_Ext(credit_conveyor, "Кредитный конвейер", "Система обработки кредитных заявок в бэк-офисе")
+System_Ext(abs, "АБС", "Автоматизированная банковская система (Delphi/PL-SQL/Oracle)")
+System_Ext(sms_gateway, "СМС-шлюз", "Отправка уведомлений клиентам")
+
+Rel(new_client, website, "Подает базовую/полную заявку на кредит", "HTTPS")
+Rel(existing_client, internet_bank, "Просматривает предодобренные предложения, подает заявку", "HTTPS")
+
+Rel(website, credit_online, "Передает кредитные заявки", "REST/JSON")
+Rel(internet_bank, credit_online, "Запрашивает предложения, передает заявки", "REST/JSON")
+
+Rel(credit_online, scoring_system, "Запрашивает скоринговые решения", "SOAP/XML, синхронно")
+Rel(credit_online, bki, "Получает кредитные истории", "HTTPS/XML, защищенный канал")
+Rel(credit_online, credit_conveyor, "Передает заявки на обработку", "Kafka/batch, раз в сутки")
+Rel(credit_online, abs, "Синхронизирует данные клиентов", "Kafka, асинхронно")
+Rel(credit_online, sms_gateway, "Отправляет уведомления о статусе", "REST/JSON")
+
+Rel(credit_conveyor, branch_manager, "Назначает задачи по заявкам")
+Rel(credit_conveyor, credit_manager, "Назначает задачи по заявкам")
+
+Rel(scoring_system, bki, "Может запрашивать доп. данные", "по необходимости")
+
+SHOW_LEGEND()
+
+@enduml

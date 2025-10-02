@@ -1,0 +1,30 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+~$*
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+bin/
+obj/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# PlantUML
+plantuml.jar

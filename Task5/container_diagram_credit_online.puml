@@ -1,0 +1,77 @@
+@startuml Credit Online - Container Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Диаграмма контейнеров: Система онлайн кредитования
+
+Person(new_client, "Новый клиент", "Подает заявку через сайт")
+Person(existing_client, "Существующий клиент", "Использует интернет-банк")
+
+System_Ext(website, "Сайт банка", "PHP + React.js")
+System_Ext(internet_bank, "Интернет-банк", "ASP.NET MVC 4.5 + React.js")
+
+System_Boundary(credit_online, "Система онлайн кредитования") {
+    Container(credit_api, "Credit Application Service", "Microservice (.NET Core REST API)", "Управление кредитными заявками, интеграция с скорингом, валидация данных")
+    Container(preapproved_service, "Pre-Approved Offers Service", "Background Service (.NET Core)", "Расчет предодобренных лимитов, персонализация предложений, batch-скоринг")
+    Container(bki_service, "Credit Bureau Integration Service", "Microservice (.NET Core)", "Интеграция с БКИ, кэширование кредитных историй, rate limiting")
+    Container(integration_adapter, "Integration Adapter", "Background Service (.NET Core + Hangfire)", "Формирование batch-файлов для кредитного конвейера, синхронизация статусов")
+
+    ContainerDb(credit_db, "Credit Database", "MS SQL", "Заявки, статусы, история изменений")
+    ContainerDb(offers_db, "Offers Database", "MS SQL", "Предодобренные лимиты, условия, история расчетов")
+    ContainerDb(bki_cache_db, "BKI Cache Database", "MS SQL", "Кеш кредитных историй, логи запросов")
+
+    Container(redis_cache, "Redis Cache", "Redis", "Кэш предложений (TTL 24ч), результатов скоринга (TTL 1ч), данных БКИ (TTL 7д)")
+    Container(kafka, "Message Queue", "Kafka", "Асинхронная передача заявок в конвейер, уведомления о статусах")
+}
+
+System_Ext(scoring_system, "Система скоринга", "Расчет скоринговых баллов")
+System_Ext(bki, "БКИ", "Внешний провайдер кредитных историй")
+System_Ext(credit_conveyor, "Кредитный конвейер", "Обработка заявок в бэк-офисе")
+System_Ext(abs, "АБС", "Delphi/PL-SQL/Oracle")
+System_Ext(sms_gateway, "СМС-шлюз", "Отправка уведомлений")
+
+' Клиенты -> Фронтенд
+Rel(new_client, website, "Подает заявку", "HTTPS")
+Rel(existing_client, internet_bank, "Запрашивает предложения", "HTTPS")
+
+' Фронтенд -> Сервисы
+Rel(website, credit_api, "POST /api/credit/applications", "REST/JSON")
+Rel(internet_bank, preapproved_service, "GET /api/preapproved/offers", "REST/JSON")
+Rel(internet_bank, credit_api, "POST /api/credit/applications", "REST/JSON")
+
+' Credit API -> БД и кэш
+Rel(credit_api, credit_db, "Сохраняет заявки", "ADO.NET")
+Rel(credit_api, redis_cache, "Кэширует результаты скоринга", "StackExchange.Redis")
+
+' Credit API -> Внешние системы
+Rel(credit_api, bki_service, "Запрашивает кредитную историю", "REST/JSON")
+Rel(credit_api, scoring_system, "Запрашивает скоринг", "SOAP/XML, синхронно")
+Rel(credit_api, kafka, "Публикует заявки", "Producer")
+Rel(credit_api, sms_gateway, "Отправляет СМС-коды", "REST/JSON")
+
+' Pre-Approved Offers Service
+Rel(preapproved_service, offers_db, "Читает/пишет предложения", "ADO.NET")
+Rel(preapproved_service, redis_cache, "Кэширует предложения (TTL 24ч)", "StackExchange.Redis")
+Rel(preapproved_service, scoring_system, "Batch-скоринг клиентов", "SOAP/XML")
+Rel(preapproved_service, abs, "Получает данные клиентов", "Oracle Client, read-only")
+
+' BKI Service
+Rel(bki_service, bki, "Запрашивает кредитные истории", "HTTPS/XML, VPN")
+Rel(bki_service, bki_cache_db, "Кэширует истории", "ADO.NET")
+Rel(bki_service, redis_cache, "Кэширует (TTL 7д)", "StackExchange.Redis")
+
+' Integration Adapter
+Rel(integration_adapter, kafka, "Читает заявки", "Consumer")
+Rel(integration_adapter, credit_db, "Читает данные заявок", "ADO.NET")
+Rel(integration_adapter, credit_conveyor, "Передает batch-файл (01:00)", "File transfer/API")
+Rel(credit_conveyor, integration_adapter, "Возвращает статусы", "File transfer/API")
+Rel(integration_adapter, kafka, "Публикует обновления статусов", "Producer")
+
+' Kafka -> Уведомления
+Rel(kafka, credit_api, "Обновления статусов", "Consumer")
+
+SHOW_LEGEND()
+
+@enduml
