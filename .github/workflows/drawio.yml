@@ -30,18 +30,24 @@ jobs:
         with:
           format: png
           transparent: false
-          output: .
+          path: .
 
       - name: Verify generated images
         run: |
-          echo "Generated PNG files from Draw.io:"
-          find . -name "*.drawio.png" -type f
+          echo "All PNG files:"
+          find . -name "*.png" -type f
+          echo "Draw.io files found:"
+          find . -name "*.drawio" -type f
 
       - name: Commit generated images
         run: |
           git config --local user.email "asachiyigor@gmail.com"
           git config --local user.name "Igor"
-          git add "**/*.drawio.png" || true
+          echo "Git status before add:"
+          git status
+          git add . || true
+          echo "Git status after add:"
+          git status
           if ! git diff --quiet || ! git diff --staged --quiet; then
             git commit -m "chore: Auto-generate Draw.io diagrams"
           else
