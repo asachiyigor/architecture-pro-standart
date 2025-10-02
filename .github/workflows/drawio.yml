@@ -1,0 +1,53 @@
+name: Generate Draw.io Diagrams
+
+on:
+  push:
+    branches:
+      - tasks
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export Draw.io files to PNG
+        uses: rlespinasse/drawio-export-action@v2
+        with:
+          format: png
+          transparent: false
+          output: .
+
+      - name: Verify generated images
+        run: |
+          echo "Generated PNG files from Draw.io:"
+          find . -name "*.drawio.png" -type f
+
+      - name: Commit generated images
+        run: |
+          git config --local user.email "asachiyigor@gmail.com"
+          git config --local user.name "Igor"
+          git add "**/*.drawio.png" || true
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            git commit -m "chore: Auto-generate Draw.io diagrams"
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Push changes
+        if: success()
+        run: |
+          git push || echo "Nothing to push"
