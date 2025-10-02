@@ -25,19 +25,27 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      - name: Install Draw.io Desktop
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm1 libasound2
+          wget https://github.com/jgraph/drawio-desktop/releases/download/v26.0.4/drawio-amd64-26.0.4.deb
+          sudo dpkg -i drawio-amd64-26.0.4.deb || sudo apt-get install -f -y
+
       - name: Export Draw.io files to PNG
-        uses: rlespinasse/drawio-export-action@v2
-        with:
-          format: png
-          transparent: false
-          path: .
+        run: |
+          echo "Draw.io files found:"
+          find . -name "*.drawio" -type f
+          for file in $(find . -name "*.drawio" -type f); do
+            output="${file%.drawio}.png"
+            echo "Converting $file to $output"
+            xvfb-run -a drawio --export --format png --output "$output" "$file"
+          done
 
       - name: Verify generated images
         run: |
           echo "All PNG files:"
           find . -name "*.png" -type f
-          echo "Draw.io files found:"
-          find . -name "*.drawio" -type f
 
       - name: Commit generated images
         run: |
