@@ -1,0 +1,65 @@
+@startuml Container Diagram - Открытие депозитов онлайн
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+LAYOUT_WITH_LEGEND()
+
+title Container Diagram - Открытие депозитов онлайн (MVP)
+
+Person(client, "Клиент Банка", "Существующий клиент банка")
+Person(new_client, "Новый Клиент", "Потенциальный клиент")
+Person(backoffice, "Сотрудник Бэк-офиса", "Менеджер бэк-офиса")
+
+System_Boundary(ibank, "Интернет-банк") {
+    Container(ibank_web, "Web Application", "ASP.NET MVC 4.5, React.js", "Предоставляет UI для подачи заявки на депозит, отображает список депозитов и ставки")
+    Container(deposit_service, "Deposit Service", "Microservice (.NET Core)", "Обрабатывает заявки на депозиты, управляет бизнес-логикой открытия депозита")
+    ContainerDb(deposit_db, "Deposit DB", "MS SQL", "Хранит заявки на депозиты")
+}
+
+Container(website, "Сайт Банка", "PHP, React.js", "Отображает информацию о депозитах, принимает заявки от новых клиентов")
+
+Container(rate_service, "Rate Management Service", "Microservice (.NET Core)", "Управление ставками по депозитам, расчет персонализированных ставок")
+ContainerDb(rate_db, "Rate DB", "MS SQL", "Хранит ставки по депозитам")
+
+System_Boundary(abs_system, "Автоматизированная Банковская Система (АБС)") {
+    Container(abs_desktop, "Desktop Client", "Delphi", "UI для сотрудников бэк-офиса")
+    Container(abs_logic, "Business Logic", "PL-SQL Procedures", "Обработка заявок, открытие депозитов, управление счетами")
+    ContainerDb(abs_db, "ABS Database", "Oracle", "Основная база данных банка")
+}
+
+System_Ext(sms_gateway, "СМС-шлюз", "Телеком-оператор для отправки СМС-уведомлений")
+
+' Взаимодействие клиентов
+Rel(client, ibank_web, "Просматривает депозиты, подает заявку", "HTTPS")
+Rel(new_client, website, "Просматривает депозиты, оставляет заявку", "HTTPS")
+Rel(backoffice, abs_desktop, "Обрабатывает заявки", "Desktop UI")
+
+' Интернет-банк
+Rel(ibank_web, deposit_service, "Вызывает API", "REST/JSON")
+Rel(ibank_web, rate_service, "Читает ставки", "REST/JSON")
+Rel(deposit_service, deposit_db, "Сохраняет заявки", "ADO.NET")
+Rel(deposit_service, abs_logic, "Передает заявки на обработку (синхронно)", "SOAP/XML")
+
+' Сайт
+Rel(website, deposit_service, "Передает заявки от новых клиентов", "REST/JSON")
+Rel(website, rate_service, "Читает ставки", "REST/JSON")
+
+' Сервис ставок
+Rel(rate_service, rate_db, "Читает/записывает ставки", "ADO.NET")
+Rel(rate_service, abs_db, "Читает данные клиента для расчета персонализированных ставок", "Oracle Client")
+
+' АБС
+Rel(abs_desktop, abs_logic, "Использует", "RPC")
+Rel(abs_logic, abs_db, "Читает/записывает", "PL-SQL")
+
+' Уведомления
+Rel(deposit_service, sms_gateway, "Отправляет СМС-уведомления о заявках", "HTTP API")
+Rel(abs_logic, sms_gateway, "Отправляет СМС-уведомления о статусе", "HTTP API")
+Rel(sms_gateway, client, "Доставляет СМС", "SMS")
+Rel(sms_gateway, new_client, "Доставляет СМС", "SMS")
+
+SHOW_LEGEND()
+
+@enduml

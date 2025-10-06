@@ -1,0 +1,35 @@
+@startuml Context Diagram - Открытие депозитов онлайн
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+LAYOUT_WITH_LEGEND()
+
+title Context Diagram - Открытие депозитов онлайн (MVP)
+
+Person(client, "Клиент Банка", "Существующий клиент банка")
+Person(new_client, "Новый Клиент", "Потенциальный клиент без счета в банке")
+Person(backoffice, "Сотрудник Бэк-офиса", "Менеджер, обрабатывающий заявки на депозиты")
+
+System(deposit_system, "Система открытия депозитов", "Позволяет клиентам подавать заявки на открытие депозитов онлайн через интернет-банк и сайт. Сотрудники бэк-офиса обрабатывают заявки в АБС.")
+
+System_Ext(abs, "АБС", "Автоматизированная Банковская Система - основная система банка для управления счетами и операциями")
+System_Ext(sms_gateway, "СМС-шлюз", "Внешний сервис телеком-оператора для отправки СМС-уведомлений")
+System_Ext(excel_rates, "Excel файлы со ставками", "Текущий процесс управления ставками по депозитам (временное решение)")
+
+Rel(client, deposit_system, "Просматривает депозиты и ставки, подает заявку на депозит", "HTTPS")
+Rel(new_client, deposit_system, "Просматривает информацию о депозитах, оставляет заявку с контактами", "HTTPS")
+Rel(backoffice, deposit_system, "Обрабатывает заявки, подтверждает ставки, открывает депозиты", "Desktop Client")
+
+Rel(deposit_system, abs, "Передает заявки на обработку (синхронно), получает данные клиентов для персонализации ставок", "SOAP/XML")
+Rel(deposit_system, sms_gateway, "Отправляет запросы на СМС-уведомления", "HTTP API")
+Rel(abs, sms_gateway, "Отправляет СМС о статусе обработки", "HTTP API")
+Rel_Back(deposit_system, excel_rates, "Импортирует ставки (текущий процесс, будет заменен)", "File Import")
+
+Rel(sms_gateway, client, "Доставляет СМС-уведомления о статусе заявки", "SMS")
+Rel(sms_gateway, new_client, "Доставляет СМС-уведомления", "SMS")
+
+SHOW_LEGEND()
+
+@enduml
